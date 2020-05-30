@@ -1,33 +1,49 @@
 extends Node
 
-
-var path2file = "res://files/data.txt"   # relative path
-var file_len 
-var path2zipfile = "res://files/data.zip"
+export var files2compress : PoolStringArray
+var compressed_file = "res://data.compress"
 
 
-func zipper(path2file):
+func zipper(files2compress : PoolStringArray):
+	var matrix := {}
 	var file = File.new()
-	file.open(path2file, File.READ)
-	var _len = file.get_len()
-#	print(file.get_len())
-	var content = file.get_buffer(_len)
-	content = content.compress(File.COMPRESSION_GZIP)
-#	content.append_array(var2bytes(_len))
-	file_len = var2bytes(_len)
-	file.close()
-	file.open("res://files/data.zip", File.WRITE)
-	file.store_buffer(content)
+	
+	for i in files2compress:
+		var err = file.open(i, File.READ)
+		if err == OK:
+			var file_length = file.get_len()
+			var pre_content = file.get_buffer(file_length)
+			var compressed_content = pre_content.compress(File.COMPRESSION_ZSTD)
+			file.close()
+			matrix[i] = [compressed_content, file_length]
+		else:
+			push_error("Fail trying to open the file: {file}".format({file = i}))
+			get_tree().quit()
+	file.open(compressed_file, File.WRITE)
+	file.store_var(matrix)
 	file.close()
 
-	
-	
-func unzipper(path2zipfile, file_len):
+
+func unzipper(path2file2decompress : String = compressed_file) -> void:
+	var decompressed_files
 	var file = File.new()
-	file.open(path2zipfile, File.READ)
-	var content = file.get_buffer(file.get_len())
-	content = content.decompress(file_len, File.COMPRESSION_GZIP)
+	
+	var err = file.open(path2file2decompress, File.READ)
 	file.close()
-	file.open("res://files/data2.txt", File.WRITE)
-	file.store_buffer(content)
-	file.close()
+	if err != OK:
+		push_error("Fail trying to open the compressed file: {file}".format({file = path2file2decompress}))
+		get_tree().quit()
+
+	var matrix = file.get_var()
+	for i in matrix:
+		var content = matrix[i][0].decompress(matrix[i][1], File.COMPRESSION_ZSTD)
+		err = file.open(i, File.WRITE)
+		if err != OK:
+			file.close()
+			push_error("Fail trying create file: {file}".format({file = i}))
+			get_tree().quit()
+		file.store_buffer(content)
+		file.close()
+
+
+
