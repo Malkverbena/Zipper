@@ -15,7 +15,7 @@ func zipper(files2compress : PoolStringArray):
 			var pre_content = file.get_buffer(file_length)
 			var compressed_content = pre_content.compress(File.COMPRESSION_ZSTD)
 			file.close()
-			matrix[i] = [compressed_content, file_length]
+			matrix[i] = [file_length, compressed_content]
 		else:
 			push_error("Fail trying to open the file: {file}".format({file = i}))
 			get_tree().quit()
@@ -36,7 +36,7 @@ func unzipper(path2file2decompress : String = compressed_file) -> void:
 
 	var matrix = file.get_var()
 	for i in matrix:
-		var content = matrix[i][0].decompress(matrix[i][1], File.COMPRESSION_ZSTD)
+		var content = matrix[i][1].decompress(matrix[i][0], File.COMPRESSION_ZSTD)
 		err = file.open(i, File.WRITE)
 		if err != OK:
 			file.close()
@@ -44,6 +44,3 @@ func unzipper(path2file2decompress : String = compressed_file) -> void:
 			get_tree().quit()
 		file.store_buffer(content)
 		file.close()
-
-
-
